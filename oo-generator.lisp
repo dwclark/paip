@@ -1,6 +1,8 @@
 ;;Designed to be a replacement for paip chapter 2 code
 ;;I realize that chapter 2 is a stupid way of generating sometimes correct English sentences
 ;;and that I'm not actually improving the algorithm itself
+
+;; definitions for producers
 (defgeneric random-child (p))
 (defgeneric child-count (p))
 (defgeneric child-at (p idx))
@@ -9,7 +11,7 @@
 
 (defclass producer ()
   ((id :initarg :id :reader id)
-   (grammar :initarg :grammar :accessor grammar)
+   (grammar :initarg :grammar :reader grammar)
    (children :initarg :children :reader children)))
 
 (defmethod child-count ((p producer))
@@ -37,15 +39,7 @@
 (defun word-producer-p (p)
   (eq 'word-producer (type-of p)))
 
-(defun rules (name &rest lists)
-  (let ((vectors (map 'vector (lambda (lst) (concatenate 'vector lst)) lists)))
-    (make-instance 'rule-producer :id name :children vectors)))
-
-(defun words (name strings)
-  (make-instance 'word-producer
-                 :id name
-                 :children (concatenate 'vector strings)))
-
+;; generation functions (positions, random production, count, all)
 (defun generate-positions (gramm start-at)
   (let ((accum (make-array 16 :adjustable t :fill-pointer 0)))
     (labels ((inner (start-at)
@@ -87,13 +81,27 @@
       
       (inner 0))))
 
-(defun make-grammar (&rest producers)
-  (let ((g (make-instance 'grammar :producers (make-hash-table))))
-    (dolist (producer producers)
-      (setf (grammar producer) g)
-      (add-producer g producer))
-    g))
+;; convenience variables, functions, and macros for constructing a grammar
+(defvar *current-grammar* nil)
 
+(defun rules (id &rest lists)
+  (let* ((vectors (map 'vector (lambda (lst) (concatenate 'vector lst)) lists))
+         (me (make-instance 'rule-producer :id id :children vectors :grammar *current-grammar*)))
+    (add-producer *current-grammar* me)))
+
+(defun words (id strings)
+  (add-producer *current-grammar*
+                (make-instance 'word-producer
+                               :id id
+                               :children (concatenate 'vector strings)
+                               :grammar *current-grammar*)))
+
+(defmacro make-grammar (&body producers)
+  `(let ((*current-grammar* (make-instance 'grammar :producers (make-hash-table))))
+     ,@producers
+     *current-grammar*))
+
+;; defined grammars
 (defparameter *typed-grammar*
   (make-grammar (rules :sentence '(:noun-phrase :verb-phrase))
                 (rules :noun-phrase '(:article :noun))

@@ -1,3 +1,6 @@
+;;Designed to be a replacement for paip chapter 2 code
+;;I realize that chapter 2 is a stupid way of generating sometimes correct English sentences
+;;and that I'm not actually improving the algorithm itself
 (defgeneric random-child (p))
 (defgeneric child-count (p))
 (defgeneric add-producer (gramm prod))
@@ -66,7 +69,7 @@
          (indexes (make-array (length positions) :fill-pointer 0))
          (counter 0))
     (labels ((inner (my-pos)
-               (loop for pos-idx from 0 below (length (children (elt positions my-pos)))
+               (loop for pos-idx from 0 below (child-count (elt positions my-pos))
                      do (progn
                           (vector-push pos-idx indexes)
                           (if (= my-pos (1- (length positions)))

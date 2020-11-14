@@ -3,6 +3,7 @@
 ;;and that I'm not actually improving the algorithm itself
 (defgeneric random-child (p))
 (defgeneric child-count (p))
+(defgeneric child-at (p idx))
 (defgeneric add-producer (gramm prod))
 (defgeneric get-producer (gramm the-key))
 
@@ -14,9 +15,11 @@
 (defmethod child-count ((p producer))
   (length (children p)))
 
+(defmethod child-at ((p producer) idx)
+  (aref (children p) idx))
+
 (defmethod random-child ((p producer))
-  (let ((idx (random (child-count p))))
-    (elt (children p) idx)))
+  (child-at p (random (child-count p))))
 
 (defclass rule-producer (producer) ())
 
@@ -31,6 +34,9 @@
 (defmethod get-producer ((gramm grammar) the-key)
   (gethash the-key (producers gramm)))
 
+(defun word-producer-p (p)
+  (eq 'word-producer (type-of p)))
+
 (defun rules (name &rest lists)
   (let ((vectors (map 'vector (lambda (lst) (concatenate 'vector lst)) lists)))
     (make-instance 'rule-producer :id name :children vectors)))
@@ -40,18 +46,11 @@
                  :id name
                  :children (concatenate 'vector strings)))
 
-(defun make-grammar (&rest producers)
-  (let ((g (make-instance 'grammar :producers (make-hash-table))))
-    (dolist (producer producers)
-      (setf (grammar producer) g)
-      (add-producer g producer))
-    g))
-
 (defun generate-positions (gramm start-at)
   (let ((accum (make-array 16 :adjustable t :fill-pointer 0)))
     (labels ((inner (start-at)
                (let ((prod (get-producer gramm start-at)))
-                 (if (eq 'word-producer (type-of prod))
+                 (if (word-producer-p prod)
                      (vector-push-extend prod accum)
                      (loop for x across (random-child prod) do (inner x))))))
       (inner start-at))
@@ -68,18 +67,32 @@
   (let* ((positions (generate-positions gramm start-at))
          (indexes (make-array (length positions) :fill-pointer 0))
          (counter 0))
-    (labels ((inner (my-pos)
-               (loop for pos-idx from 0 below (child-count (elt positions my-pos))
+    (labels ((word-at (idx)
+               (child-at (aref positions idx) (aref indexes idx)))
+             
+             (process-next ()
+               (format t "~A) ~{~A~^ ~}~%"
+                       (incf counter)
+                       (loop for idx from 0 below (length indexes) collect (word-at idx))))
+             
+             
+             (inner (my-pos)
+               (loop for pos-idx from 0 below (child-count (aref positions my-pos))
                      do (progn
                           (vector-push pos-idx indexes)
                           (if (= my-pos (1- (length positions)))
-                              (format t "~A) ~{~A~^ ~}~%"
-                                      (incf counter)
-                                      (loop for indexes-idx from 0 below (length indexes)
-                                            collect (elt (children (elt positions indexes-idx)) (elt indexes indexes-idx))))
+                              (process-next)
                               (inner (1+ my-pos)))
                           (vector-pop indexes)))))
+      
       (inner 0))))
+
+(defun make-grammar (&rest producers)
+  (let ((g (make-instance 'grammar :producers (make-hash-table))))
+    (dolist (producer producers)
+      (setf (grammar producer) g)
+      (add-producer g producer))
+    g))
 
 (defparameter *typed-grammar*
   (make-grammar (rules :sentence '(:noun-phrase :verb-phrase))

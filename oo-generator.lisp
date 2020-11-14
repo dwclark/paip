@@ -84,7 +84,7 @@
 ;; convenience variables, functions, and macros for constructing a grammar
 (defvar *current-grammar* nil)
 
-(defun rules (id &rest lists)
+(defun rule (id &rest lists)
   (let* ((vectors (map 'vector (lambda (lst) (concatenate 'vector lst)) lists))
          (me (make-instance 'rule-producer :id id :children vectors :grammar *current-grammar*)))
     (add-producer *current-grammar* me)))
@@ -96,27 +96,27 @@
                                :children (concatenate 'vector strings)
                                :grammar *current-grammar*)))
 
-(defmacro make-grammar (&body producers)
+(defmacro with-grammar (&body producers)
   `(let ((*current-grammar* (make-instance 'grammar :producers (make-hash-table))))
      ,@producers
      *current-grammar*))
 
 ;; defined grammars
 (defparameter *typed-grammar*
-  (make-grammar (rules :sentence '(:noun-phrase :verb-phrase))
-                (rules :noun-phrase '(:article :noun))
-                (rules :verb-phrase '(:verb :noun-phrase))
+  (with-grammar (rule :sentence '(:noun-phrase :verb-phrase))
+                (rule :noun-phrase '(:article :noun))
+                (rule :verb-phrase '(:verb :noun-phrase))
                 (words :article '("the" "a"))
                 (words :noun '("man" "ball" "woman" "table"))
                 (words :verb '("hit" "took" "saw" "liked"))))
 
 (defparameter *bigger-grammar*
-  (make-grammar (rules :sentence '(:noun-phrase :verb-phrase))
-                (rules :noun-phrase '(:article :adj* :noun :pp*) '(:name) '(:pronoun))
-                (rules :verb-phrase '(:verb :noun-phrase :pp*))
-                (rules :pp* '() '(:pp :pp*))
-                (rules :adj* '() '(:adj :adj*))
-                (rules :pp  '(:prep :noun-phrase))
+  (with-grammar (rule :sentence '(:noun-phrase :verb-phrase))
+                (rule :noun-phrase '(:article :adj* :noun :pp*) '(:name) '(:pronoun))
+                (rule :verb-phrase '(:verb :noun-phrase :pp*))
+                (rule :pp* '() '(:pp :pp*))
+                (rule :adj* '() '(:adj :adj*))
+                (rule :pp  '(:prep :noun-phrase))
                 (words :prep '("to" "in" "by" "with" "on"))
                 (words :adj '("big" "little" "blue" "green" "adiabatic"))
                 (words :article '("the" "a"))

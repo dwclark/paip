@@ -70,16 +70,16 @@
                        (loop for idx from 0 below (length indexes) collect (word-at idx))))
              
              
-             (inner (my-pos)
+             (build-indices (my-pos)
                (loop for pos-idx from 0 below (child-count (aref positions my-pos))
                      do (progn
                           (vector-push pos-idx indexes)
                           (if (= my-pos (1- (length positions)))
                               (process-next)
-                              (inner (1+ my-pos)))
+                              (build-indices (1+ my-pos)))
                           (vector-pop indexes)))))
       
-      (inner 0))))
+      (build-indices 0))))
 
 ;; convenience variables, functions, and macros for constructing a grammar
 (defvar *current-grammar* nil)
@@ -89,38 +89,48 @@
          (me (make-instance 'rule-producer :id id :children vectors :grammar *current-grammar*)))
     (add-producer *current-grammar* me)))
 
-(defun words (id strings)
+(defun words (id &rest strings)
   (add-producer *current-grammar*
                 (make-instance 'word-producer
                                :id id
-                               :children (concatenate 'vector strings)
+                               :children (apply 'vector strings)
                                :grammar *current-grammar*)))
 
-(defmacro with-grammar (&body producers)
+(defmacro with-new-grammar (&body producers)
   `(let ((*current-grammar* (make-instance 'grammar :producers (make-hash-table))))
      ,@producers
      *current-grammar*))
 
+(defmacro make-grammar (&body forms)
+  `(with-new-grammar
+     ,@(loop for form in forms
+             collect (progn
+                       (if (stringp (second form))
+                           (append (list 'words) form)
+                           (append (list 'rule) form))))))
+
 ;; defined grammars
 (defparameter *typed-grammar*
-  (with-grammar (rule :sentence '(:noun-phrase :verb-phrase))
-                (rule :noun-phrase '(:article :noun))
-                (rule :verb-phrase '(:verb :noun-phrase))
-                (words :article '("the" "a"))
-                (words :noun '("man" "ball" "woman" "table"))
-                (words :verb '("hit" "took" "saw" "liked"))))
+  (make-grammar
+    (:sentence '(:noun-phrase :verb-phrase))
+    (:noun-phrase '(:article :noun))
+    (:verb-phrase '(:verb :noun-phrase))
+    (:article "the" "a")
+    (:noun "man" "ball" "woman" "table")
+    (:verb "hit" "took" "saw" "liked")))
 
 (defparameter *bigger-grammar*
-  (with-grammar (rule :sentence '(:noun-phrase :verb-phrase))
-                (rule :noun-phrase '(:article :adj* :noun :pp*) '(:name) '(:pronoun))
-                (rule :verb-phrase '(:verb :noun-phrase :pp*))
-                (rule :pp* '() '(:pp :pp*))
-                (rule :adj* '() '(:adj :adj*))
-                (rule :pp  '(:prep :noun-phrase))
-                (words :prep '("to" "in" "by" "with" "on"))
-                (words :adj '("big" "little" "blue" "green" "adiabatic"))
-                (words :article '("the" "a"))
-                (words :name '("Pat" "Kim" "Lee" "Terry" "Robin"))
-                (words :noun '("man" "ball" "woman" "table"))
-                (words :verb '("hit" "took" "saw" "liked"))
-                (words :pronoun '("he" "she" "it" "these" "those" "that"))))
+  (make-grammar
+    (:sentence '(:noun-phrase :verb-phrase))
+    (:noun-phrase '(:article :adj* :noun :pp*) '(:name) '(:pronoun))
+    (:verb-phrase '(:verb :noun-phrase :pp*))
+    (:pp* '() '(:pp :pp*))
+    (:adj* '() '(:adj :adj*))
+    (:pp  '(:prep :noun-phrase))
+    (:prep "to" "in" "by" "with" "on")
+    (:adj "big" "little" "blue" "green" "adiabatic")
+    (:article "the" "a")
+    (:name "Pat" "Kim" "Lee" "Terry" "Robin")
+    (:noun "man" "ball" "woman" "table")
+    (:verb "hit" "took" "saw" "liked")
+    (:pronoun "he" "she" "it" "these" "those" "that")))

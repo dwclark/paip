@@ -1,5 +1,7 @@
+(in-package :paip)
+
 (defparameter *variable-first* #\?)
-(defparameter *variable-segment* '?*)
+(defparameter *variable-segment* "?*")
 (defparameter *match-exact* '(t t))
 
 (defun symbol-variable-p (s)
@@ -17,7 +19,7 @@
 (defun segment-matcher-p (p)
   (and (listp p)
        (= 2 (length p))
-       (eq *variable-segment* (first p))))
+       (search *variable-segment* (symbol-name (first p)))))
 
 (defun segment-variable (p) (second p))
 

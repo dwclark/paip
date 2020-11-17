@@ -31,7 +31,6 @@
                      (cond ((simple-matcher-p p) *match-exact*)
                            
                            ((variable-matcher-p p)
-                            (format t "variables-matched:found variable-matcher~%")
                             (append (list p) (subseq input pos (1+ pos))))
                            
                            ((segment-matcher-p p)
@@ -42,7 +41,6 @@
                                       (subseq input pos next-index)))))) into matched
 
         finally (return (let ((de-duped (remove-duplicates matched)))
-                          (format t "de-duped ~A~%" de-duped)
                           (if (< 1 (length de-duped))
                               (remove *match-exact* de-duped)
                               de-duped)))))
@@ -56,41 +54,30 @@
          (next input)
          (matching-all nil))
 
-    (loop while (not (null next))
-          do (let ((p (first next-pattern)))
-               (format t "matching-all ~A, p: ~A, next: ~A~%" matching-all p (first next))
-               (cond ((and (simple-matcher-p p) (eq p (first next)))
-                      (format t "Found simple matcher~%")
-                      (vector-push (incf input-pos) positions)
-                      (setf next (rest next))
-                      (setf next-pattern (rest next-pattern))
-                      (setf matching-all nil))
+    (flet ((update-match-state (ma)
+             (vector-push (incf input-pos) positions)
+             (setf next (rest next))
+             (setf next-pattern (rest next-pattern))
+             (setf matching-all ma)))
+      
+      (loop while (not (null next))
+            do (let ((p (first next-pattern)))
+                 (cond ((and (simple-matcher-p p) (eq p (first next)))
+                        (update-match-state nil))
 
-                     ((variable-matcher-p p)
-                      (format t "Found variable matcher~%")
-                      (vector-push (incf input-pos) positions)
-                      (setf next (rest next))
-                      (setf next-pattern (rest next-pattern))
-                      (setf matching-all nil))
+                       ((variable-matcher-p p)
+                        (update-match-state nil))
+                       
+                       ((segment-matcher-p p)
+                        (update-match-state t))
 
-                     ((segment-matcher-p p)
-                      (format t "Found segment matcher~%")
-                      (vector-push (incf input-pos) positions)
-                      (setf next (rest next))
-                      (setf next-pattern (rest next-pattern))
-                      (setf matching-all t))
-
-                     (matching-all
-                      (format t "Advancing in matching-all")
-                      (incf input-pos)
-                      (setf next (rest next)))
-
-                     (t
-                      (format t "Executing exit")
-                      (return-from pattern-match nil)))))
-
-    (format t "matches-needed: ~A, length: ~A~%" matches-needed (length positions))
-    (if (and (= matches-needed (length positions))
-             (null next))
-        (variables-matched pattern positions input)
-        nil)))
+                       (matching-all
+                        (incf input-pos)
+                        (setf next (rest next)))
+                       
+                       (t (return-from pattern-match nil)))))
+      
+      (if (and (= matches-needed (length positions))
+               (null next))
+          (variables-matched pattern positions input)
+          nil))))

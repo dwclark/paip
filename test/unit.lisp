@@ -10,12 +10,18 @@
     (is (equal '((?X HAPPY) (?Y LIVES))
                (pattern-match '(the ?x man (?* ?y) well) '(the happy man lives well))))
     (is (equal '((?X GOOD MAN)) (pattern-match '(the (?* ?x)) '(the good man))))
-    (is (equal '((?X THE GOOD MAN)) (pattern-match '((?* ?x)) '(the good man)))))
+    (is (equal '((?X THE GOOD MAN)) (pattern-match '((?* ?x)) '(the good man))))
+    (is (pattern-match '((?* ?x) no (?* ?y)) '(no)))
+    (is (pattern-match '((?* ?x) hello (?* ?y)) '(hello there))))
 
   (deftest test-aux-functions
     (is (symbol-variable-p '?y))
     (is (not (symbol-variable-p 'y)))
 
+    (is (symbol-match 'x 'x))
+    (is (symbol-match :x 'x))
+    (is (not (symbol-match :x 'y)))
+    
     (is (simple-matcher-p '1))
     (is (simple-matcher-p 'y))
     (is (not (simple-matcher-p nil)))

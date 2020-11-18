@@ -7,6 +7,18 @@
 (defun symbol-variable-p (s)
   (char= (char (symbol-name s) 0) *variable-first*))
 
+(defun symbol-match (s1 s2)
+  (cond ((or (null s1) (null s2))
+         nil)
+
+        ((and (numberp s1) (numberp s2))
+         (= s1 s2))
+
+        ((and (symbolp s1) (symbolp s2))
+         (string= (symbol-name s1) (symbol-name s2)))
+
+        (t nil)))
+
 (defun simple-matcher-p (p)
   (and (not (null p))
        (or (numberp p)
@@ -52,32 +64,41 @@
          (input-pos -1)
          (next-pattern pattern)
          (next input)
-         (matching-all nil))
+         (matching-all nil)
+         (backfill-segment nil))
+    
+    (loop while (not (null next))
+          do (let ((p (first next-pattern)))
+               (cond ((or (and (simple-matcher-p p) (symbol-match p (first next)))
+                          (variable-matcher-p p))
+                      (incf input-pos)
+                      (when backfill-segment
+                        (vector-push input-pos positions)
+                        (setf backfill-segment nil))
+                      
+                      (vector-push input-pos positions)
+                      (setf next-pattern (rest next-pattern))
+                      (setf matching-all nil)
+                      (setf next (rest next)))
+                     
+                     ((segment-matcher-p p)
+                      (setf next-pattern (rest next-pattern))
+                      (setf matching-all t)
+                      (setf backfill-segment t))
+                     
+                     (matching-all
+                      (incf input-pos)
+                      (when backfill-segment
+                        (vector-push input-pos positions)
+                        (setf backfill-segment nil))
+                      (setf next (rest next)))
+                     
+                     (t (return-from pattern-match nil)))))
 
-    (flet ((update-match-state (ma)
-             (vector-push (incf input-pos) positions)
-             (setf next (rest next))
-             (setf next-pattern (rest next-pattern))
-             (setf matching-all ma)))
-      
-      (loop while (not (null next))
-            do (let ((p (first next-pattern)))
-                 (cond ((and (simple-matcher-p p) (eq p (first next)))
-                        (update-match-state nil))
-
-                       ((variable-matcher-p p)
-                        (update-match-state nil))
-                       
-                       ((segment-matcher-p p)
-                        (update-match-state t))
-
-                       (matching-all
-                        (incf input-pos)
-                        (setf next (rest next)))
-                       
-                       (t (return-from pattern-match nil)))))
-      
-      (if (and (= matches-needed (length positions))
-               (null next))
-          (variables-matched pattern positions input)
-          nil))))
+    (when (and (not (null next-pattern)) (segment-matcher-p (first next-pattern)))
+      (vector-push (incf input-pos) positions))
+    
+    (if (and (= matches-needed (length positions))
+             (null next))
+        (variables-matched pattern positions input)
+        nil)))

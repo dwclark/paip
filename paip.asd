@@ -5,7 +5,9 @@
   :version "0.0.1"
   :serial t
   :components ((:file "package")
-               (:file "src/pattern-match")))
+               (:file "src/utils")
+               (:file "src/pattern-match")
+               (:file "src/eliza")))
 
 (asdf:defsystem #:paip-tests
   :description "paip-tests"

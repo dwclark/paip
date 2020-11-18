@@ -6,6 +6,7 @@
 (defparameter *paip-internal-symbols*
   (list
    'paip::symbol-variable-p
+   'paip::symbol-match
    'paip::simple-matcher-p
    'paip::variable-matcher-p
    'paip::segment-matcher-p

@@ -56,8 +56,14 @@
                           (if (< 1 (length de-duped))
                               (remove *match-exact* de-duped)
                               de-duped)))))
-                              
 
+
+;;the backfill functionality assumes a * type of matching (0 -> infinity)
+;;the matching-all is the fall through signalling that we are still in
+;;a segment matcher. backfill-segment is only to backfill the indexes to signal
+;;that there was at least a single match that will need to be matched/extracted
+;;because zero match is possible, the input could also match the next pattern,
+;;in which case this should signal a true match, but not match any input.
 (defun pattern-match (pattern input)
   (let* ((matches-needed (length pattern))
          (positions (make-array matches-needed :fill-pointer 0))

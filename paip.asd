@@ -7,5 +7,6 @@
   :depends-on ("alexandria")
   :components ((:file "src/package")
 	       (:file "src/gps")
-	       (:file "src/eliza")))
+	       (:file "src/eliza")
+	       (:file "src/trie")))
 

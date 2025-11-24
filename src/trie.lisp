@@ -1,63 +1,73 @@
 (in-package :paip-trie)
 
-(declaim (optimize (debug 3) (safety 3)))
-
-(defstruct trie-node
-  (key nil)
-  (value nil)
-  (children (make-array 0 :element-type 'trie-node :adjustable t :fill-pointer t) :type (vector trie-node *)))
+(defstruct trie-node key value children)
 
 (defstruct trie
   (pred< #'char<)
   (size 0)
   (root (make-trie-node)))
 
-(defun binary-search (ary key pred<)
-  (let* ((low 0)
-	 (high (1- (fill-pointer ary))))
+(defun binary-search (parent search-for pred<)
+  (let* ((ary (trie-node-children parent))
+	 (low 0)
+	 (high (1- (if (null ary) 0 (array-dimension ary 0)))))
     (declare (type fixnum low high))
     
     (loop while (<= low high)
 	  do (let* ((mid (ash (+ low high) -1))
-		    (node (aref ary mid))
-		    (node-key (trie-node-key node)))
+		    (child (aref ary mid))
+		    (key (trie-node-key child)))
 	       (declare (type fixnum mid))
-	       (cond ((funcall pred< node-key key)
+	       (cond ((funcall pred< key search-for)
 		      (setf low (1+ mid)))
-		     ((funcall pred< key node-key)
+		     ((funcall pred< search-for key)
 		      (setf high (1- mid)))
-		     (t (return (values node mid)))))
-	  finally (return (values nil (- (1+ low)))))))
+		     (t (return child))))
+	  finally (return nil))))
 
-(defun insert-child (ary pos key)
-  (vector-push-extend nil ary)
-  (loop for i from (1- (fill-pointer ary)) above pos
-	do (setf (aref ary i) (aref ary (1- i))))
-  (setf (aref ary pos) (make-trie-node :key key)))
+(defun insert-child (parent key pred<)
+  (let* ((ary (trie-node-children parent))
+	 (child (make-trie-node :key key))
+	 (new-size (1+ (if (null ary) 0 (array-dimension ary 0))))
+	 (new-array (make-array new-size :element-type 'trie-node :initial-element child)))
+    (if (< 1 new-size)
+	(loop with index = 0
+	      for element across ary
+	      do (if (and key (funcall pred< key (trie-node-key element)))
+		     (setf key nil
+			   (aref new-array index) child
+			   (aref new-array (1+ index)) element
+			   index (+ 2 index))
+		     (setf (aref new-array index) element
+			   index (1+ index)))))
+    (setf (trie-node-children parent) new-array)
+    child))
 
-(defun remove-empty (ary)
+(defun remove-empty (parent)
   (labels ((is-empty (node) (and (null (trie-node-value node))
-				 (= 0 (fill-pointer (trie-node-children node))))))
-    (let ((pos (position-if #'is-empty ary)))
-      (if pos
+				 (null (trie-node-children node)))))
+    (let ((kids (trie-node-children parent)))
+      (if (find-if #'is-empty kids)
 	  (progn
-	    (loop for n from pos below (1- (fill-pointer ary))
-		  do (setf (aref ary n) (aref ary (1+ n))))
-	    (setf (fill-pointer ary) (1- (fill-pointer ary)))
+	    (if (= 1 (array-dimension kids 0))
+		(setf (trie-node-children parent) nil)
+		(setf (trie-node-children parent) (remove-if #'is-empty kids)))
 	    t)
 	  nil))))
 
 (defun trie-find-node (tr vec &optional (create nil))
   (loop with node = (trie-root tr)
 	with modified = nil
+	with pred< = (trie-pred< tr)
 	for key across vec
-	do (let ((kids (trie-node-children node)))
-	     (multiple-value-bind (found at) (binary-search kids key (trie-pred< tr))
-	       (if found
-		   (setf node found)
-		   (if create
-		       (setf node (insert-child kids (- (1+ at)) key) modified t)
-		       (return (values nil modified))))))
+	do (let* ((found (if (trie-node-children node)
+			     (binary-search node key pred<)
+			     nil)))
+	     (if found
+		 (setf node found)
+		 (if create
+		     (setf node (insert-child node key pred<) modified t)
+		     (return (values nil modified)))))
 	finally (return (values node modified))))
 
 (defun trie-search (tr vec)
@@ -76,21 +86,20 @@
 (defun trie-delete (tr vec)
   (let ((deleted nil))
     (labels ((delete-it (node vec)
-	       (let ((found (binary-search (trie-node-children node) (aref vec 0) (trie-pred< tr))))
-		 (if found
-		     (if (= 1 (array-dimension vec 0))
-			 (progn
-			   (setf deleted (trie-node-value found) (trie-node-value found) nil)
-			   (decf (trie-size tr))
-			   deleted)
-			 (if (delete-it found (make-array (1- (array-dimension vec 0))
-							  :element-type (array-element-type vec)
-							  :displaced-to vec :displaced-index-offset 1))
-			     (remove-empty (trie-node-children found))
-			     nil))
-		     nil))))
-      (if (delete-it (trie-root tr) vec)
-	  (remove-empty (trie-node-children (trie-root tr)))))
+	       (cond ((null node)
+		      nil)
+		     
+		     ((zerop (array-dimension vec 0))
+		      (setf deleted (trie-node-value node) (trie-node-value node) nil)
+		      (decf (trie-size tr))
+		      t)
+
+		     ((delete-it (binary-search node (aref vec 0) (trie-pred< tr))
+				 (make-array (1- (array-dimension vec 0))
+					     :element-type (array-element-type vec)
+					     :displaced-to vec :displaced-index-offset 1))
+		      (remove-empty node)))))
+      (delete-it (trie-root tr) vec))
     deleted))
 
 ;; todo: add iteration constructs, preferrably ones that could be used in standard lisp constructs like do, loop, or iterate

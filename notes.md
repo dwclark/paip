@@ -36,4 +36,20 @@ I skimmed this chapter because two things became clear:
 * I have to go back and study the implementation of pattern matching in chapter 6. That is turning out to be crucial and re-used over and over again. Unification is basically a slight variation of pattern matching.
 * This chapter will take some time to study and understand. At some point I will, but for now I just want to get a feel for what is in the book.
 
+### Chapter 13
 
+CLOS just isn't as useful as you might expect. It's been my experience. Norvig says on page 453, "So far the case for CLOS has not been compelling." You might think that this is to build tension for the forthcoming explanation of what _does_ make CLOS compelling. But, this page is the end of the CLOS tutorial, after that it's all summary and historical notes.
+
+I guess CLOS is not that compelling.
+
+However, the amount of history in this chapter is interesting. One gets the impression that OO programming never really achieved final form. Everyone came up with their own versions and the great OO wars commenced. It also seems like the 1980's really was the last great era of programming language design. And if you believe Pike's Systems Software Research is Irrelevant, that was the end of the line for all systems software.
+
+### Chapter 14
+
+I skimmed it again. My plan/hope is to make studying this text a long term project because I want to get more experience with AI, its history, and its algorithms.
+
+But, this was easily the densest chapter so far. I have to confess that I really didn't get a lot from the skim, which isn't surprising. One thing I did finally conclude is that in AI (maybe old fashioned AI??) is that there is zero distinction between the compiler, knowledge representation, the code that is writen, how data is expressed, etc. This is most likely why traditional AI/Lisp programmer always reach for lists. It's the language of the base system reader and the representation of the base language. This to get the lack of distinctions, it's easiest to stick with lists in writing code, data, and knowledge representation. For example, if everything is a list, you can always make things more performant at selective points by compiling those lists into more efficient data structures and functions.
+
+The point is that my approach to this text needs to change. My inclination is to always change what Norvig does to make it something more to my liking: more efficient, more similar to systems I have made in the past, more like things I have done in the past, etc. However, there is one large problem with that. The systems I have made in the past tend to be closed systems that one _uses_. However, the systems in this book, and what Lisp excels at, is making open systems that one _lives within_. It's a different way of thinking. Of course this is a metaphor and in some sense these Lisp programs are closed systems. In some sense the systems I have done are open. In fact, ironically, the systems I make tend to be more open with their emphasis on DSLs and extensibility than are most systems. But there's still a pretty wide gulf between these systems and the systems I have made/used in the past.
+
+I'm also wondering if this is why LLMs tend to succeed and fail in ways that traditional AI systems do not. LLMs are closed systems and not just because they tend to be closed source and proprietary. You can't live within them, you can only put queries to them. They are successful in that by emphasizing efficiency and being closed they can encompass all of human knowlege. Well, they encompass all digital _representations_ of knowledge. But they really don't bring any insight, nobody really knows how or why they work, and nobody really knows when they are BS-ing and hallucinating...that is unless you already know the answer is wrong. But if you already know that, then why use the AI in the first place?
